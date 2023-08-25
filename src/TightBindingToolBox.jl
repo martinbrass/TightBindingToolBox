@@ -7,7 +7,8 @@ module TightBindingToolBox
     include("bandstructure.jl")
     using .Bandstructure
     export bandstructure, plot_Bandstructure, DOS, plot_DOS,
-           density_matrix, plot_pDOS
+           density_matrix, plot_pDOS, surface_spectral_density,
+           surface_bands
 
     include("parser.jl")
     using .Parser

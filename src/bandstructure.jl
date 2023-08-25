@@ -1,8 +1,9 @@
 module Bandstructure
     export bandstructure, plot_Bandstructure, DOS, plot_DOS,
-           density_matrix, plot_pDOS
+           density_matrix, plot_pDOS, surface_spectral_density,
+           surface_bands
     
-    using ..TightBindingToolBox, LinearAlgebra, Plots
+    using ..TightBindingToolBox, LinearAlgebra, Plots, Base.Threads
 
     function bandstructure(H::TB_Hamiltonian{F,L},path,n_pts)  where {F,L}
         n = H.local_dim
@@ -105,4 +106,59 @@ module Bandstructure
         end
         return ρ
     end
+
+    function surface_spectral_density(H::TB_Hamiltonian{F,L},
+                                      ω::Number,
+                                      bx::Array{L,1},
+                                      by::Array{L,1},
+                                      bz::Array{L,1},
+                                      n_layer::Integer,
+                                      n_kpts::Integer
+                                      ) where {F,L}
+        d = H.local_dim
+        Hs = zeros(ComplexF64,n_layer*d,n_layer*d,nthreads())
+        #ipiv = Array{Int,1}(undef,n_layer*d)
+        A = zeros(n_kpts,n_kpts)
+        r = range(-1/2,1/2,n_kpts)
+        @threads for y = 1:n_kpts
+            ky = (y-1)/(n_kpts-1) - 1/2
+            for x = 1:n_kpts
+                kx = (x-1)/(n_kpts-1) - 1/2
+                k = kx * bx + ky * by
+                slab_hamiltonian!(H,k,bz,n_layer,@view Hs[:,:,threadid()])
+                for i = 1:d*n_layer 
+                    Hs[i,i,threadid()] -= ω 
+                end
+                #LAPACK.hetri!('U',Hs,ipiv)
+                #LAPACK.getrf!(Hs)
+                #LAPACK.getri!(Hs,ipiv)
+                G = inv(@view Hs[:,:,threadid()])
+                #A[x,y] += imag(tr(@view Hs[1:d,1:d])) 
+                A[x,y] += imag(tr(@view G[1:d,1:d])) 
+            end
+        end
+        return A
+    end
+
+    function surface_bands( H::TB_Hamiltonian{F,L},
+                            k_path,
+                            bz::Array{L,1},
+                            n_layer::Integer,
+                            ) where {F,L}
+        d = H.local_dim
+        n_kpts = length(k_path)
+        bands = Array{Float64,2}(undef,d*n_layer,n_kpts)
+        weights = Array{Float64,2}(undef,d*n_layer,n_kpts)
+        Hs = zeros(ComplexF64,n_layer*d,n_layer*d)
+        for i=1: n_kpts
+            slab_hamiltonian!(H,k_path[i],bz,n_layer,Hs)
+            E, T = LAPACK.syev!('V','U',Hs)
+            bands[:,i] .= E
+            for j = 1:d*n_layer
+                weights[j,i] = norm(@view T[1:d,j])
+            end
+        end
+        return bands, weights
+    end
+
 end

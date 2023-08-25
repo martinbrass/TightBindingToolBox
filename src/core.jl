@@ -40,7 +40,12 @@ module Core
         end
     end
 
-    function slab_hamiltonian!(H::TB_Hamiltonian{F,L},k::Array{T,1},bz::Array{L,1},n_layer::Integer,Hs::Array{ComplexF64,2}) where {F,L,T<:Real}
+    function slab_hamiltonian!(H::TB_Hamiltonian{F,L},
+                               k::Array{T,1},
+                               bz::Array{L,1},
+                               n_layer::Integer,
+                               Hs
+                               ) where {F,L,T<:Real}
         Hs .*= 0
         d = H.local_dim
         for (R,t) in pairs(H.hoppings)
