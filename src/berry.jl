@@ -1,6 +1,7 @@
 module Berry
     export discretize_BZ, assign_fibre, scan_BZ_for_Weyl_points, check_wp_candidates,
-           integrate_berry_curvature_sphere, refine_wp,print_Berry_curvature
+           integrate_berry_curvature_sphere, refine_wp,print_Berry_curvature, 
+           berry_flux_through_plane, integrate_connection_along_path
 
     using ..TightBindingToolBox
     using LinearAlgebra, Base.Threads, CSV, DataFrames
@@ -234,5 +235,44 @@ module Berry
         end
         dat[:,4:6] .*= r/2/norm
         CSV.write(filename,DataFrame(dat,:auto),writeheader=false, delim=' ')
+    end
+    """
+    this function uses the berry curvature to calculate the flux through a plane centered at 
+        k0 and spanned by k1,k2
+    """
+    function berry_flux_through_plane(H,idx_band,k0,k1,k2;N=100)
+        Ω = zeros(3,3)
+        d = H.local_dim
+        Hk = zeros(ComplexF64,d,d)
+        ∂Hk = [zeros(ComplexF64,d,d),zeros(ComplexF64,d,d),zeros(ComplexF64,d,d)]
+    
+        h = 1/N
+        Φ = 0.0
+        for x in -1/2:h:1/2-h, y in -1/2:h:1/2-h
+            k = k0 + x*k1 + y*k2
+            get_Hk_∂Hk!(H,k,Hk,∂Hk)
+            get_berry_curvature!(H,k,idx_band,Hk,∂Hk,Ω)
+            Φ += 2 * Ω[1,2]
+        end
+        return Φ*h^2 / 2π
+    end
+
+    function integrate_connection_along_path(H,kpath,idx_band)
+        d = H.local_dim
+        Hk = zeros(ComplexF64,d,d)
+        ψ1 = zeros(ComplexF64,d)
+        ψ2 = zeros(ComplexF64,d)
+        bloch_hamiltonian!(H,kpath[1],Hk)
+        ψ1 .= (LAPACK.syev!('V','U',Hk)[2])[:,idx_band]
+        prod = 1.0+0im
+        for i = 2:length(kpath)
+            bloch_hamiltonian!(H,kpath[i],Hk)
+            ψ2 .= (LAPACK.syev!('V','U',Hk)[2])[:,idx_band]
+            prod *= (ψ1⋅ψ2)
+            t = ψ1
+            ψ1 = ψ2
+            ψ2 = t
+        end
+        return -angle(prod)
     end
 end

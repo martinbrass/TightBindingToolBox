@@ -1,6 +1,6 @@
 using TightBindingToolBox
 using Test
 
-@testset "TightBindingToolBox.jl" begin
-    # Write your tests here.
+@testset verbose=true "TightBindingToolBox.jl" begin
+    include("core.jl")
 end
