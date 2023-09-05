@@ -1,10 +1,11 @@
 module Berry
     export discretize_BZ, assign_fibre, scan_BZ_for_Weyl_points, check_wp_candidates,
            integrate_berry_curvature_sphere, refine_wp,print_Berry_curvature, 
-           berry_flux_through_plane, integrate_connection_along_path
+           berry_flux_through_plane, integrate_connection_along_path,berry_force!,
+           search_weyl_points, plot_curvature, integrate_berry_curvature_donut
 
     using ..TightBindingToolBox
-    using LinearAlgebra, Base.Threads, CSV, DataFrames
+    using LinearAlgebra, Base.Threads, CSV, DataFrames, DifferentialEquations
     
     function discretize_BZ(N;origin=[0.,0,0])
         n = N+1
@@ -63,7 +64,9 @@ module Berry
         
     function get_Hk_∂Hk!(H::TB_Hamiltonian,k,Hk,∂Hk)
         Hk  .*= 0
-        ∂Hk .*= 0
+        for m=1:H.lattice_dim 
+            ∂Hk[m] .*= 0 
+        end
         for (R,t) in pairs(H.hoppings)
             Hk .+= t .* exp(2π*im * (k⋅R)) 
             for m = 1:H.lattice_dim
@@ -131,7 +134,7 @@ module Berry
         ∂Hk = map(x->copy(Hk),collect(1:d))
         Ω = zeros(Float64,d,d)
         
-        for iφ = 0:nφ-1, iθ = 0:nθ-1
+        for iφ = 0:nφ-1, iθ = 0:nθ-1 # TODO: remove -1???
             φ = iφ * dφ
             θ = iθ * dθ
             er = r*[cos(φ)*sin(θ), sin(φ) *sin(θ),cos(θ)]
@@ -140,6 +143,30 @@ module Berry
             eφ = r*[-sin(φ)*sin(θ), cos(φ)*sin(θ), 0]
             eθ = r*[cos(φ)*cos(θ), sin(φ)*cos(θ), -sin(θ)]
             Φ += 2* eφ ⋅ (Ω * eθ) * dφ * dθ
+        end
+        return -Φ # the minus sign comes from accidentally using a left handed system dφ^dθ, but dθ^dϕ would be correct
+    end
+
+    function integrate_berry_curvature_donut(H::TB_Hamiltonian,idx_band, b1,b2,b3,r,nφ,nz)
+        Φ = 0
+        dφ = 2π/nφ
+        dz = 1/nz
+    
+        dim = H.local_dim
+        d = H.lattice_dim
+        Hk = zeros(ComplexF64,dim,dim)
+        ∂Hk = map(x->copy(Hk),collect(1:d))
+        Ω = zeros(Float64,d,d)
+        
+        for iφ = 0:nφ-1, iz = 0:nz-1 #TODO remove -1 ???
+            φ = iφ * dφ
+            z = iz * dz
+            k = r*(cos(φ)*b1 + sin(φ)*b2) + z*b3
+            get_berry_curvature!(H,k,idx_band,Hk,∂Hk,Ω)
+    
+            eφ = r*(-sin(φ)*b1 + cos(φ)*b2)
+
+            Φ += 2* eφ ⋅ (Ω * b3) * dφ * dz
         end
         return Φ
     end
@@ -274,5 +301,61 @@ module Berry
             ψ2 = t
         end
         return -angle(prod)
+    end
+
+    function berry_force!(dk,k,p,x) # H,band_idx,k,Hk,∂Hk,Ω
+        (Ham,idx,Hk,∂Hk,Ω,i) = p
+        get_Hk_∂Hk!(Ham,k,Hk,∂Hk)
+        get_berry_curvature!(Ham,k,idx,Hk,∂Hk,Ω)
+        dk[1] = Ω[2,3] * i
+        dk[2] = Ω[3,1] * i
+        dk[3] = Ω[1,2] * i
+    end
+
+    function evolve_to_weyl_point(H::TB_Hamiltonian,idx_band,k0,χ;trange = (0.,1.0))
+        Ω = zeros(3,3)
+        d = H.local_dim
+        Hk = zeros(ComplexF64,d,d)
+        ∂Hk = [zeros(ComplexF64,d,d),zeros(ComplexF64,d,d),zeros(ComplexF64,d,d)]
+        p = (H,idx_band,Hk,∂Hk,Ω,χ)
+        prob = ODEProblem(berry_force!,k0,trange,p)
+        y = solve(prob,ImplicitEuler(autodiff=false);verbose=false)
+        return y[:,end]
+    end
+
+    function search_weyl_points(H::TB_Hamiltonian,idx_band,klist::Vector{T};atol=1E-4) where {T}
+        d = H.local_dim
+        wps = Vector{Vector{T}}(undef,nthreads())
+        for i = 1:nthreads()
+            wps[i] = Vector{T}()
+        end
+        @threads for k0 in klist
+            for χ in (-1,1)
+                wp = evolve_to_weyl_point(H,idx_band,k0,χ)
+                Hk = Matrix{ComplexF64}(undef,d,d)
+                bloch_hamiltonian!(H,wp,Hk)
+                E = LAPACK.syev!('N','U',Hk)
+                if  ((idx_band > 1) && (E[idx_band]-E[idx_band-1] < atol)) || ((idx_band < d) && (E[idx_band+1]-E[idx_band] < atol))
+                    push!(wps[threadid()],wp)
+                end
+            end
+        end
+        append!(wps[1],wps[2:end]...)
+    end
+
+    function plot_curvature(H,idx_band,k0,k1,k2;N=100)
+        Ω = zeros(3,3,N,N)
+        d = H.local_dim
+        Hk = zeros(ComplexF64,d,d)
+        ∂Hk = [zeros(ComplexF64,d,d),zeros(ComplexF64,d,d),zeros(ComplexF64,d,d)]
+    
+        r = range(-1/2,1/2,N)
+        for (i,x) in pairs(r), (j,y) in pairs(r)
+            k = k0 + x*k1 + y*k2
+            get_Hk_∂Hk!(H,k,Hk,∂Hk)
+            get_berry_curvature!(H,k,idx_band,Hk,∂Hk,@view Ω[:,:,i,j])
+        end
+        h = 1/N
+        return Ω .*(h^2 / 2π)
     end
 end

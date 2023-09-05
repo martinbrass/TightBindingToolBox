@@ -12,7 +12,7 @@ module Core
 
     TB_Hamiltonian{F,L}(n,d::Int64) where {F,L} = TB_Hamiltonian(n,d,Dictionary{Array{L,1},Array{F,2}}())
 
-    function add_hoppings!(H::TB_Hamiltonian{F,L},R::Array{L,1},h::Array{T,2}) where {F,L,T<:Number}
+    function add_hoppings!(H::TB_Hamiltonian{F,L},R::Array{L,1},h) where {F,L}
         if haskey(H.hoppings,R)
             H.hoppings[R] .+= h
         elseif length(R) != H.lattice_dim

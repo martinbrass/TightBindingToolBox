@@ -1,7 +1,7 @@
 module Bandstructure
     export bandstructure, plot_Bandstructure, DOS, plot_DOS,
            density_matrix, plot_pDOS, surface_spectral_density,
-           surface_bands
+           surface_bands, projected_spectral_density
     
     using ..TightBindingToolBox, LinearAlgebra, Plots, Base.Threads
 
@@ -113,7 +113,9 @@ module Bandstructure
                                       by::Array{L,1},
                                       bz::Array{L,1},
                                       n_layer::Integer,
-                                      n_kpts::Integer
+                                      n_kpts::Integer,
+                                      kx_offset = -1/2,
+                                      ky_offset = -1/2
                                       ) where {F,L}
         d = H.local_dim
         Hs = zeros(ComplexF64,n_layer*d,n_layer*d,nthreads())
@@ -121,9 +123,9 @@ module Bandstructure
         A = zeros(n_kpts,n_kpts)
         r = range(-1/2,1/2,n_kpts)
         @threads for y = 1:n_kpts
-            ky = (y-1)/(n_kpts-1) - 1/2
+            ky = (y-1)/(n_kpts-1) + ky_offset
             for x = 1:n_kpts
-                kx = (x-1)/(n_kpts-1) - 1/2
+                kx = (x-1)/(n_kpts-1) + kx_offset
                 k = kx * bx + ky * by
                 slab_hamiltonian!(H,k,bz,n_layer,@view Hs[:,:,threadid()])
                 for i = 1:d*n_layer 
@@ -135,6 +137,38 @@ module Bandstructure
                 G = inv(@view Hs[:,:,threadid()])
                 #A[x,y] += imag(tr(@view Hs[1:d,1:d])) 
                 A[x,y] += imag(tr(@view G[1:d,1:d])) 
+            end
+        end
+        return A
+    end
+
+    function projected_spectral_density(H::TB_Hamiltonian{F,L},
+                                        ω::Number,
+                                        bx::Array{T,1},
+                                        by::Array{T,1},
+                                        bz::Array{T,1},
+                                        n_kpts::Integer,
+                                        n_kpts_z::Integer
+                                        ) where {F,L,T<:Real}
+        d = H.local_dim
+        Hk = zeros(ComplexF64,d,d)
+
+        A = zeros(n_kpts,n_kpts)
+        r = range(-1/2,1/2,n_kpts)
+        for y = 1:n_kpts
+            ky = (y-1)/(n_kpts-1) - 1/2
+            for x = 1:n_kpts
+                kx = (x-1)/(n_kpts-1) - 1/2
+                for z = 1:n_kpts_z
+                    kz = (z-1)/(n_kpts_z-1) - 1/2
+                    k = kx * bx + ky * by + kz * bz
+                    bloch_hamiltonian!(H,k,Hk)
+                    for i = 1:d
+                        Hk[i,i] -= ω 
+                    end
+                    G = inv(Hk)
+                    A[x,y] += imag(tr(G)) 
+                end
             end
         end
         return A
