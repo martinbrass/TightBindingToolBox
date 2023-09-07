@@ -1,7 +1,8 @@
 module Bandstructure
     export bandstructure, plot_Bandstructure, DOS, plot_DOS,
            density_matrix, plot_pDOS, surface_spectral_density,
-           surface_bands, projected_spectral_density
+           surface_bands, projected_spectral_density,
+           surface_spectral_spin_density
     
     using ..TightBindingToolBox, LinearAlgebra, Plots, Base.Threads
 
@@ -106,7 +107,7 @@ module Bandstructure
         end
         return ρ
     end
-
+#The function below is old and embarrasingly slow, use the other one
     function surface_spectral_density(H::TB_Hamiltonian{F,L},
                                       ω::Number,
                                       bx::Array{L,1},
@@ -142,13 +143,93 @@ module Bandstructure
         return A
     end
 
+    function surface_spectral_density(H::TB_Hamiltonian{F,L},
+                                    ω::Number,
+                                    bx::Array{L,1},
+                                    by::Array{L,1},
+                                    bz::Array{L,1},
+                                    n_super_layer::Integer,
+                                    n_layer::Integer,
+                                    n_kpts::Integer,
+                                    kx_offset = -1/2,
+                                    ky_offset = -1/2
+                                    ) where {F,L}
+        d = H.local_dim
+        Hs = zeros(ComplexF64,2*n_layer*d,2*n_layer*d)
+        A = zeros(n_kpts,n_kpts)
+        Y = zeros(ComplexF64,n_layer*d,n_layer*d)
+        for y = 1:n_kpts
+            ky = (y-1)/(n_kpts-1) + ky_offset
+            for x = 1:n_kpts
+                kx = (x-1)/(n_kpts-1) + kx_offset
+                k = kx * bx + ky * by
+                slab_hamiltonian!(H,k,bz,2*n_layer,Hs)
+                h0 = I*ω - Hs[1:d*n_layer,1:d*n_layer]
+                T = @view Hs[1:d*n_layer,1+d*n_layer:2*d*n_layer];
+                Td= T'
+                Gr = inv(h0)                
+                for i=1:n_super_layer-1
+                    mul!(Y,Gr,Td)
+                    mul!(Gr,T,Y)
+                    Gr .= h0 .- Gr
+                    Gr = inv(Gr)
+                end
+                A[x,y] -= imag(tr(@view Gr[1:d,1:d])) 
+            end
+        end
+        return A
+    end
+
+    function surface_spectral_spin_density(H::TB_Hamiltonian{F,L},
+                                        S,
+                                        ω::Number,
+                                        bx::Array{L,1},
+                                        by::Array{L,1},
+                                        bz::Array{L,1},
+                                        n_super_layer::Integer,
+                                        n_layer::Integer,
+                                        n_kpts::Integer,
+                                        kx_offset = -1/2,
+                                        ky_offset = -1/2
+                                        ) where {F,L}
+        d = H.local_dim
+        Hs = zeros(ComplexF64,2*n_layer*d,2*n_layer*d)
+        ns = length(S)
+        A = zeros(ns,n_kpts,n_kpts)
+        Y = zeros(ComplexF64,n_layer*d,n_layer*d)
+        for y = 1:n_kpts
+            ky = (y-1)/(n_kpts-1) + ky_offset
+            for x = 1:n_kpts
+                kx = (x-1)/(n_kpts-1) + kx_offset
+                k = kx * bx + ky * by
+                slab_hamiltonian!(H,k,bz,2*n_layer,Hs)
+                h0 = I*ω - Hs[1:d*n_layer,1:d*n_layer]
+                T = @view Hs[1:d*n_layer,1+d*n_layer:2*d*n_layer];
+                Td= T'
+                Gr = inv(h0)                
+                for i=1:n_super_layer-1
+                    mul!(Y,Gr,Td)
+                    mul!(Gr,T,Y)
+                    Gr .= h0 .- Gr
+                    Gr = inv(Gr)
+                end
+                for (i,σ) in pairs(S)
+                    A[i,x,y] -= imag(tr(σ * @view Gr[1:d,1:d])) 
+                end
+            end
+        end
+        return A
+    end
+
     function projected_spectral_density(H::TB_Hamiltonian{F,L},
                                         ω::Number,
                                         bx::Array{T,1},
                                         by::Array{T,1},
                                         bz::Array{T,1},
                                         n_kpts::Integer,
-                                        n_kpts_z::Integer
+                                        n_kpts_z::Integer,
+                                        kx_offset = -1/2,
+                                        ky_offset = -1/2
                                         ) where {F,L,T<:Real}
         d = H.local_dim
         Hk = zeros(ComplexF64,d,d)
@@ -156,9 +237,9 @@ module Bandstructure
         A = zeros(n_kpts,n_kpts)
         r = range(-1/2,1/2,n_kpts)
         for y = 1:n_kpts
-            ky = (y-1)/(n_kpts-1) - 1/2
+            ky = (y-1)/(n_kpts-1) + ky_offset
             for x = 1:n_kpts
-                kx = (x-1)/(n_kpts-1) - 1/2
+                kx = (x-1)/(n_kpts-1) + kx_offset
                 for z = 1:n_kpts_z
                     kz = (z-1)/(n_kpts_z-1) - 1/2
                     k = kx * bx + ky * by + kz * bz

@@ -2,7 +2,8 @@ module Berry
     export discretize_BZ, assign_fibre, scan_BZ_for_Weyl_points, check_wp_candidates,
            integrate_berry_curvature_sphere, refine_wp,print_Berry_curvature, 
            berry_flux_through_plane, integrate_connection_along_path,berry_force!,
-           search_weyl_points, plot_curvature, integrate_berry_curvature_donut
+           search_weyl_points, plot_curvature, integrate_berry_curvature_donut,
+           spin_texture
 
     using ..TightBindingToolBox
     using LinearAlgebra, Base.Threads, CSV, DataFrames, DifferentialEquations
@@ -234,6 +235,21 @@ module Berry
         k_pts[1,2,2] = k0 + e3 + e2
         k_pts[2,2,2] = k0 + e1 + e2 + e3
         return k_pts
+    end
+
+    function spin_texture(H::TB_Hamiltonian,idx_band,k_surface,S)
+        d = H.local_dim
+        Hk = zeros(ComplexF64,d,d)
+        n = size(k_surface,1)
+        dat = zeros(Float64,n,length(S))
+        for i = 1:n
+            k = k_surface[i,:]
+            Hk = bloch_hamiltonian(H,k)
+            E, T = LAPACK.syev!('V','U',Hk)
+            ψ = @view T[:,idx_band]
+            map!(σ -> real(ψ ⋅ (σ*ψ)),(@view dat[i,:]),S)
+        end
+        return dat
     end
 
     function print_Berry_curvature(H::TB_Hamiltonian,idx_band, k0,r,nφ,nθ,filename)

@@ -12,7 +12,8 @@ module TightBindingToolBox
     using .Bandstructure
     export bandstructure, plot_Bandstructure, DOS, plot_DOS,
         density_matrix, plot_pDOS, surface_spectral_density,
-        surface_bands, projected_spectral_density
+        surface_bands, projected_spectral_density,
+        surface_spectral_spin_density
 
     include("parser.jl")
     using .Parser
@@ -23,5 +24,6 @@ module TightBindingToolBox
     export discretize_BZ, assign_fibre, scan_BZ_for_Weyl_points, check_wp_candidates,
         integrate_berry_curvature_sphere, refine_wp, print_Berry_curvature,
         berry_flux_through_plane, integrate_connection_along_path, berry_force!,
-        search_weyl_points, plot_curvature, integrate_berry_curvature_donut
+        search_weyl_points, plot_curvature, integrate_berry_curvature_donut,
+        spin_texture
 end
