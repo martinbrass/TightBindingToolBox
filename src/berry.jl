@@ -341,22 +341,19 @@ module Berry
 
     function search_weyl_points(H::TB_Hamiltonian,idx_band,klist::Vector{T};atol=1E-4) where {T}
         d = H.local_dim
-        wps = Vector{Vector{T}}(undef,nthreads())
-        for i = 1:nthreads()
-            wps[i] = Vector{T}()
-        end
-        @threads for k0 in klist
+        wps = Vector{T}()
+        for k0 in klist
             for χ in (-1,1)
                 wp = evolve_to_weyl_point(H,idx_band,k0,χ)
                 Hk = Matrix{ComplexF64}(undef,d,d)
                 bloch_hamiltonian!(H,wp,Hk)
                 E = LAPACK.syev!('N','U',Hk)
                 if  ((idx_band > 1) && (E[idx_band]-E[idx_band-1] < atol)) || ((idx_band < d) && (E[idx_band+1]-E[idx_band] < atol))
-                    push!(wps[threadid()],wp)
+                    push!(wps,wp)
                 end
             end
         end
-        append!(wps[1],wps[2:end]...)
+        return wps
     end
 
     function plot_curvature(H,idx_band,k0,k1,k2;N=100)
