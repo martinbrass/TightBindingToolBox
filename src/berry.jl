@@ -335,7 +335,7 @@ module Berry
         ∂Hk = [zeros(ComplexF64,d,d),zeros(ComplexF64,d,d),zeros(ComplexF64,d,d)]
         p = (H,idx_band,Hk,∂Hk,Ω,χ)
         prob = ODEProblem(berry_force!,k0,trange,p)
-        y = solve(prob,ImplicitEuler(autodiff=false);verbose=false)
+        y = solve(prob,ImplicitEuler(autodiff=false);verbose=true)
         return y[:,end]
     end
 

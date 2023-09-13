@@ -34,7 +34,7 @@ module Core
     end
 
     function bloch_hamiltonian!(H::TB_Hamiltonian{F,L},k,Hk::Array{ComplexF64,2}) where {F,L}
-        Hk .*= zero(F) 
+        Hk .*= 0
         for (R,t) in pairs(H.hoppings)
             Hk .+= t .* exp(2π*im * (k⋅R)) 
         end
