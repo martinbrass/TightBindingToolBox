@@ -36,6 +36,7 @@ module Bandstructure
     end
 
     function DOS(H::TB_Hamiltonian,wlist,ngrdpts,γ)
+        npts = length(wlist)
         dos = zeros(npts)
         Hk = zeros(ComplexF64,H.local_dim,H.local_dim)
         npts = length(wlist)

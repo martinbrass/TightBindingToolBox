@@ -1,8 +1,9 @@
 module Symmetry
     include("groups.jl")
-    export conjugate, coset, quotient, conjugacy_classes, generate_group
+    export conjugate, coset, quotient, conjugacy_classes, generate_group, irreps, orbit,
+        stabilizer, isgroup, characters
 
-    include("symmetry_operations.jl")
-    export SymOperation, translations, SpinRep
+    include("euclidean_symmetry.jl")
+    export SymOperation, translations, SpinSym, representation
     
 end

@@ -26,4 +26,10 @@ module TightBindingToolBox
         berry_flux_through_plane, integrate_connection_along_path, berry_force!,
         search_weyl_points, plot_curvature, integrate_berry_curvature_donut,
         spin_texture
+
+    include("symmetry/symmetry.jl")
+    using .Symmetry
+    export conjugate, coset, quotient, conjugacy_classes, generate_group, irreps,
+        SymOperation, translations, SpinSym, orbit, stabilizer, isgroup, characters,
+        representation
 end

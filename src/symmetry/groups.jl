@@ -1,5 +1,5 @@
 using Permutations
-#conjugate(g,h) = h*g*groupinverse(h)
+
 conjugate(g,h) = h*g*inv(h)
 coset(g,H::Set) = Set(map(h->g*h,collect(H)))
 quotient(G,N) = Set(map(g->coset(g,N),collect(G)))
@@ -203,7 +203,7 @@ function element_labels(G)
     return labels
 end
 
-function stabilizer(k,G)
+function stabilizer(G,k)
     S = typeof(G)()
     for g in G
         if (g*k == k)
