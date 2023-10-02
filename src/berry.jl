@@ -321,7 +321,7 @@ module Berry
 
     function berry_force!(dk,k,p,x) # H,band_idx,k,Hk,∂Hk,Ω
         (Ham,idx,Hk,∂Hk,Ω,i) = p
-        get_Hk_∂Hk!(Ham,k,Hk,∂Hk)
+        #get_Hk_∂Hk!(Ham,k,Hk,∂Hk) this should be irrelevant
         get_berry_curvature!(Ham,k,idx,Hk,∂Hk,Ω)
         dk[1] = Ω[2,3] * i
         dk[2] = Ω[3,1] * i

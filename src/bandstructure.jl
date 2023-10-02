@@ -181,6 +181,48 @@ module Bandstructure
         return A
     end
 
+    function surface_spectral_density2(H::TB_Hamiltonian{F,L},
+        ω::Number,
+        bx::Array{L,1},
+        by::Array{L,1},
+        bz::Array{L,1},
+        n_super_layer::Integer,
+        n_layer::Integer,
+        n_kpts::Integer,
+        kx_offset = -1/2,
+        ky_offset = -1/2
+        ) where {F,L}
+        d = H.local_dim
+        Hs = zeros(ComplexF64,2*n_layer*d,2*n_layer*d)
+        A = zeros(n_kpts,n_kpts)
+        Y = zeros(ComplexF64,n_layer*d,n_layer*d)
+        k = Vector{Float64}(undef,length(bx)) #
+        h0 = Matrix{ComplexF64}(undef,d*n_layer,d*n_layer) #
+        W = ω * Diagonal(ones(d*n_layer)) #
+        Gr = Matrix{ComplexF64}(undef,d*n_layer,d*n_layer) #
+        for y = 1:n_kpts
+            ky = (y-1)/(n_kpts-1) + ky_offset
+            for x = 1:n_kpts
+                kx = (x-1)/(n_kpts-1) + kx_offset
+                @. k = kx * bx + ky * by #
+                slab_hamiltonian!(H,k,bz,2*n_layer,Hs) 
+                foo = @view Hs[1:d*n_layer,1:d*n_layer]
+                @. h0 = W - foo #
+                T = @view Hs[1:d*n_layer,1+d*n_layer:2*d*n_layer];
+                Td= T'
+                Gr = inv(h0)                
+                for i=1:n_super_layer-1
+                    mul!(Y,Gr,Td)
+                    mul!(Gr,T,Y)
+                    Gr .= h0 .- Gr
+                    Gr = inv(Gr)
+                end
+                A[x,y] -= imag(tr(@view Gr[1:d,1:d])) 
+            end
+        end
+        return A
+    end
+
     function surface_spectral_spin_density(H::TB_Hamiltonian{F,L},
                                         S,
                                         ω::Number,
@@ -275,6 +317,38 @@ module Bandstructure
             end
         end
         return bands, weights
+    end
+
+    function surface_bands(H::TB_Hamiltonian{F,L},
+                            k_path,
+                            ω_pts,
+                            bz::Array{L,1},
+                            n_super_layer::Integer,
+                            n_layer::Integer
+                            ) where {F,L}
+        d = H.local_dim
+        n_kpts = length(k_path)
+        n_ω = length(ω_pts)
+        Hs = zeros(ComplexF64,2*n_layer*d,2*n_layer*d)
+        A = zeros(n_ω,n_kpts)
+        Y = zeros(ComplexF64,n_layer*d,n_layer*d)
+        for (y,k) in pairs(k_path)
+            for (x,z) in pairs(ω_pts)
+                slab_hamiltonian!(H,k,bz,2*n_layer,Hs)
+                h0 = I*z - Hs[1:d*n_layer,1:d*n_layer]
+                T = @view Hs[1:d*n_layer,1+d*n_layer:2*d*n_layer];
+                Td= T'
+                Gr = inv(h0)                
+                for i=1:n_super_layer-1
+                    mul!(Y,Gr,Td)
+                    mul!(Gr,T,Y)
+                    Gr .= h0 .- Gr
+                    Gr = inv(Gr)
+                end
+                A[x,y] -= imag(tr(@view Gr[1:d,1:d])) 
+            end
+        end
+        return A
     end
 
 end

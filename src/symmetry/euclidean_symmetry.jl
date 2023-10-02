@@ -58,6 +58,28 @@ Base.:(==)(x::SpinSym,y::SpinSym) = x.R == y.R && norm(x.S-y.S) < 1E-6
 Base.hash(x::SpinSym) = Base.hash(x.R)
 Base.inv(x::SpinSym) = SpinSym(inv(x.R),Matrix(x.S'))
 
+function stabilizer(G::Set{SymOperation},k)
+    S = typeof(G)()
+    for g in G
+        x = mod.(g*k - k,1)
+        if (x⋅x==0)
+            push!(S,g)
+        end
+    end
+    return S
+end
+
+function stabilizer(G::Set{SpinSym},k)
+    S = typeof(G)()
+    for g in G
+        x = mod.(g*k - k,1)
+        if (x⋅x==0)
+            push!(S,g)
+        end
+    end
+    return S
+end
+
 function SU2_matrix(n::Int,k::Vector)
     σ0 = [1 0; 0 1]
     σx = [0 1; 1 0]

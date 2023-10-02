@@ -55,13 +55,15 @@ module Core
                 for m = 0:n_layer-1-n
                     i = (m + n) * d
                     j = m*d
-                    Hs[i+1:i+d , j+1:j+d] .+= t .* ϕ 
+                    hs = @view Hs[i+1:i+d , j+1:j+d]
+                    @. hs += t * ϕ 
                 end
             else
                 for m = 0:n_layer-1+n
                     i = m*d
                     j = (m - n) * d
-                    Hs[i+1:i+d , j+1:j+d] .+= t .* ϕ 
+                    hs = @view Hs[i+1:i+d , j+1:j+d]
+                    @. hs += t * ϕ 
                 end
             end
         end
