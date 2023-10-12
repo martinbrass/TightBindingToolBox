@@ -6,6 +6,14 @@ module Bandstructure
     
     using ..TightBindingToolBox, LinearAlgebra, Plots, Base.Threads
 
+    """
+    bandstructure calculates the energy dispersion along path
+    path is a list of k-vectors (in units of the reciprocal basis)
+    n_pts defines how many points are sampled between two consecutive k-vectors in path
+    on return:
+        bands = energy values along path
+        lines,x = auxilliary stuff for plotting (see below)
+    """
     function bandstructure(H::TB_Hamiltonian{F,L},path,n_pts)  where {F,L}
         n = H.local_dim
         l = length(path)
@@ -27,6 +35,13 @@ module Bandstructure
         return bands, lines, x
     end
 
+    """
+    plot_Bandstructure plots the energy dispersion along path
+    path is a list of k-vectors (in units of the reciprocal basis)
+    n_pts defines how many points are sampled between two consecutive k-vectors in path
+    label is a list of strings to specify the points in path (typically ["Γ","A","X",...])
+    kwargs can be all key-words for the Plots.plot function
+    """
     function plot_Bandstructure(H,path,n_pts,label;kwargs...)
         l = length(path)
         bands, lines, x = bandstructure(H,path,n_pts)
@@ -35,6 +50,11 @@ module Bandstructure
         return pt
     end
 
+    """
+    DOS calculates the density of states for energies given in wlist
+    summation is performed equidistantly on the whole Brillouin zone over ngrdpts per direction
+    γ is a small smearing, i.e. lorentzian line-width
+    """
     function DOS(H::TB_Hamiltonian,wlist,ngrdpts,γ)
         npts = length(wlist)
         dos = zeros(npts)
@@ -57,12 +77,21 @@ module Bandstructure
         return dos
     end
 
+    """
+    plot_DOS plots the above density of states
+    wmin, wmax determine the minimum/maximum energy for which DOS shall be calculated
+    kwargs can be all key-words for the Plots.plot function
+    """
     function plot_DOS(H::TB_Hamiltonian,wmin,wmax,npts,ngrdpts,γ;kwargs...)
         wlist = map((x)->wmin+(x-1)/(npts-1)*(wmax-wmin),collect(1:npts))
         dos = DOS(H,wlist,ngrdpts,γ)
         return plot(wlist,dos, framestyle = :box,legend=false;kwargs...)
     end
     
+    """
+    plot_pDOS is the same as plot_DOS but for the partial density of states,
+        i.e the trace is taken over only those orbitals defined by orbitals (list of Int)
+    """
     function plot_pDOS(H::TB_Hamiltonian,orbitals,wmin,wmax,npts,ngrdpts,γ)
         dos = zeros(npts)
         Hk = zeros(ComplexF64,H.local_dim,H.local_dim)
@@ -90,7 +119,13 @@ module Bandstructure
         return plt, wlist, dos   
     end
     
-    function density_matrix(H::TB_Hamiltonian,ngrdpts)
+    """
+    the density matrix is the single particle ground-state expectation value of c^dagger_i c_j
+    where (i,j) denote indices of orbitals
+    μ is the chemical potential (i.e. Fermi energy)
+    summation is performed equidistantly on the whole Brillouin zone over ngrdpts per direction
+    """
+    function density_matrix(H::TB_Hamiltonian,ngrdpts,μ=0.0)
         d = H.local_dim
         N = ngrdpts*ngrdpts*ngrdpts
         ρ = zeros(ComplexF64,d,d)
@@ -101,49 +136,21 @@ module Bandstructure
             ϵk, Tk = LAPACK.syev!('V','U',Hk)
             for i = 1:d, j = 1:d
                 for m = 1:d
-                    if ϵk[m] > 0 break end
+                    if ϵk[m] > μ break end
                     ρ[i,j] += Tk[i,m]*conj(Tk[j,m])/N
                 end
             end
         end
         return ρ
     end
-#The function below is old and embarrasingly slow, use the other one
-    function surface_spectral_density(H::TB_Hamiltonian{F,L},
-                                      ω::Number,
-                                      bx::Array{L,1},
-                                      by::Array{L,1},
-                                      bz::Array{L,1},
-                                      n_layer::Integer,
-                                      n_kpts::Integer,
-                                      kx_offset = -1/2,
-                                      ky_offset = -1/2
-                                      ) where {F,L}
-        d = H.local_dim
-        Hs = zeros(ComplexF64,n_layer*d,n_layer*d,nthreads())
-        #ipiv = Array{Int,1}(undef,n_layer*d)
-        A = zeros(n_kpts,n_kpts)
-        r = range(-1/2,1/2,n_kpts)
-        @threads for y = 1:n_kpts
-            ky = (y-1)/(n_kpts-1) + ky_offset
-            for x = 1:n_kpts
-                kx = (x-1)/(n_kpts-1) + kx_offset
-                k = kx * bx + ky * by
-                slab_hamiltonian!(H,k,bz,n_layer,@view Hs[:,:,threadid()])
-                for i = 1:d*n_layer 
-                    Hs[i,i,threadid()] -= ω 
-                end
-                #LAPACK.hetri!('U',Hs,ipiv)
-                #LAPACK.getrf!(Hs)
-                #LAPACK.getri!(Hs,ipiv)
-                G = inv(@view Hs[:,:,threadid()])
-                #A[x,y] += imag(tr(@view Hs[1:d,1:d])) 
-                A[x,y] += imag(tr(@view G[1:d,1:d])) 
-            end
-        end
-        return A
-    end
 
+    """
+    bz is a reciprocal lattice vector orthogonal to the surface
+    bx,by are reciprocal lattice vectors that span the surface
+    n_layer defines how many layers are contained in a superlayer (will become deprecated soon)
+    n_super_layer defines the number of superlayers (slap then has n_super_layer*n_layer layers)
+    the inplane momentum goes from -1/2 to 1/2 unless specified otherwise via kx_offset/ky_offset
+    """
     function surface_spectral_density(H::TB_Hamiltonian{F,L},
                                     ω::Number,
                                     bx::Array{L,1},
@@ -223,6 +230,9 @@ module Bandstructure
         return A
     end
 
+    """
+    sames as surface_spectral_density but now for the spinoperator S (list of matrices)
+    """
     function surface_spectral_spin_density(H::TB_Hamiltonian{F,L},
                                         S,
                                         ω::Number,
@@ -264,6 +274,9 @@ module Bandstructure
         return A
     end
 
+    """
+    same as surface_spectral_density but for the bulk only, i.e without surface states
+    """
     function projected_spectral_density(H::TB_Hamiltonian{F,L},
                                         ω::Number,
                                         bx::Array{T,1},
@@ -298,6 +311,11 @@ module Bandstructure
         return A
     end
 
+    """
+    warning: use better version with super-layer
+    energy dispersion along k_path (list of momenta) on a surface
+        perpendicular to bz (reciprocal lattice vector)
+    """
     function surface_bands( H::TB_Hamiltonian{F,L},
                             k_path,
                             bz::Array{L,1},
@@ -319,6 +337,12 @@ module Bandstructure
         return bands, weights
     end
 
+    """
+    energy dispersion along k_path (list of momenta) on a surface
+        perpendicular to bz (reciprocal lattice vector)
+    n_layer defines how many layers are contained in a superlayer (will become deprecated soon)
+    n_super_layer defines the number of superlayers (slap then has n_super_layer*n_layer layers)
+    """
     function surface_bands(H::TB_Hamiltonian{F,L},
                             k_path,
                             ω_pts,

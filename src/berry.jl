@@ -32,6 +32,10 @@ module Berry
         return F
     end
 
+    """
+    scan the Brillouin-zone for Weyl-points by calculating Chern numbers in boxes 
+        and refining those boxes
+    """
     function scan_BZ_for_Weyl_points(H::TB_Hamiltonian,BZ,idx_band;thresh=0.99)
         cells = Vector{Float64}[]
         nx,ny,nz = size(BZ)
@@ -124,6 +128,12 @@ module Berry
         return wps, chern_nums
     end
 
+    """
+    idx_band = Int defining the band for which berry_curvature is calculated
+    k0 = origin of the sphere
+    r = radius of the sphere 
+    nφ, nθ = Int number of discretizations in the angles in spherical coordinates
+    """
     function integrate_berry_curvature_sphere(H::TB_Hamiltonian,idx_band, k0,r,nφ,nθ)
         Φ = 0
         dφ = 2π/nφ
@@ -319,6 +329,10 @@ module Berry
         return -angle(prod)
     end
 
+    """
+    berry_force! is used for Weyl point detection, 
+        it gives the Vectorfield corresponding to the berry-curvature
+    """
     function berry_force!(dk,k,p,x) # H,band_idx,k,Hk,∂Hk,Ω
         (Ham,idx,Hk,∂Hk,Ω,i) = p
         #get_Hk_∂Hk!(Ham,k,Hk,∂Hk) this should be irrelevant
@@ -339,6 +353,11 @@ module Berry
         return y[:,end]
     end
 
+    """
+    Weyl point detectioon using the PRB XXX algorithm
+    idx_band::Int is the index of the band for which we search Weyl points
+    klist is a list of starting points in the Brillouin zone
+    """
     function search_weyl_points(H::TB_Hamiltonian,idx_band,klist::Vector{T};atol=1E-4) where {T}
         d = H.local_dim
         wps = Vector{T}()
@@ -356,6 +375,11 @@ module Berry
         return wps
     end
 
+    """
+    visulaize the Berry curvature on a plane centered on k0 and spanned by k1,k2 (all vectors of momentum)
+        N = number of points per direction for plotting
+        returned is the Berry curvature Ω (a 3x3 Matrix for every point in the plane, i.e a 3x3xNxN array)
+    """
     function plot_curvature(H,idx_band,k0,k1,k2;N=100)
         Ω = zeros(3,3,N,N)
         d = H.local_dim

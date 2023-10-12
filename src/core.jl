@@ -4,6 +4,14 @@ module Core
     
     using LinearAlgebra, CSV, DataFrames,Dictionaries
 
+    """
+    TB_Hamiltonian{F,L} is the main structure that represents a tight-binding Hamiltonian.
+    F denotes the field (nomplex or real numbers typically) and L denotes the type of the 
+    components of reciprocal lattice vectors (typically Int or rational, don't use Float)
+    local_dim = dimension of local Hilbert-space, i.e. number of (spin-)orbitals or bands
+    lattice_dim = dimension of the Bravais-lattice
+    hoppings = Dictionary which has lattice vectors as keys and hopping-matrices as values
+    """
     struct TB_Hamiltonian{F,L}
         local_dim::Int64
         lattice_dim::Int64
@@ -12,6 +20,9 @@ module Core
 
     TB_Hamiltonian{F,L}(n,d::Int64) where {F,L} = TB_Hamiltonian(n,d,Dictionary{Array{L,1},Array{F,2}}())
 
+    """
+    add_hoppings! adds the (key,value) pair (R,h) to the Hamiltonian h
+    """
     function add_hoppings!(H::TB_Hamiltonian{F,L},R::Array{L,1},h) where {F,L}
         if haskey(H.hoppings,R)
             H.hoppings[R] .+= h
@@ -24,6 +35,10 @@ module Core
         end
     end
 
+    """
+    bloch_hamiltonian fourier transforms H and evaluates at momentum k
+    bloch_hamiltonian! is an inplace version where Hk needs to be initialized
+    """
     function bloch_hamiltonian(H::TB_Hamiltonian{F,L},k) where {F,L}
         n = H.local_dim
         Hk = zeros(F,n,n)
@@ -40,6 +55,11 @@ module Core
         end
     end
 
+    """
+    slab_hamiltonian! calculates the Hamiltonian for a slap which is finite in direction bz
+    where it has n_layer layers and infinite in the plane perpendicular to bz. It is evaluated 
+    at momentum k and stored in the initialized matrix Hs
+    """
     function slab_hamiltonian!(H::TB_Hamiltonian{F,L},
                                k::Array{T,1},
                                bz::Array{L,1},

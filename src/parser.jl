@@ -2,7 +2,11 @@ module Parser
     export FPLO_import_TB, Wannier90_import_TB
     using ..TightBindingToolBox
     using LinearAlgebra, CSV, DataFrames
-
+    
+    """
+    Wannier90_import_TB reads the tight-binding output from Wannier90 (typically hr.dat) 
+        and transform it into a TB_Hamiltonian structure
+    """
     function Wannier90_import_TB(file_name)
         local_dim = CSV.read(file_name,DataFrame,delim=" ",ignorerepeated=true,header=false,skipto=2,limit=1)[1,1]
         n2 = local_dim*local_dim
@@ -39,6 +43,10 @@ module Parser
         return H
     end
     
+    """
+    FPLO_import_TB reads the tight-binding output from FPLO (typically +hamdata) 
+        and transform it into a TB_Hamiltonian structure
+    """
     function FPLO_import_TB(filename)
         file = open(filename)
         R = FPLO_get_lattice_vectors(file)
@@ -50,8 +58,15 @@ module Parser
         return H
     end
     
+    """
+    import symmetry operation from the FPLO file +hamdata
+    opnames must match the FPLO naming conventions
+    """
     FPLO_import_symops(filename,opnames::Vector{String}) = map(s->FPLO_import_symop(filename,s),opnames)
     
+    """
+    import symmetry operation from the FPLO file +hamdata
+    """
     function FPLO_import_symop(filename,opname::String)
         file = open(filename)
         R = FPLO_get_lattice_vectors(file)
@@ -81,6 +96,9 @@ module Parser
         return line
     end
     
+    """
+    import the lattice vectors form FPLO's +hamdata
+    """
     function FPLO_get_lattice_vectors(file)
         R = zeros(3,3)
         while !eof(file)
@@ -106,6 +124,9 @@ module Parser
         throw(error("nwan: not found in file\n"))
     end
     
+    """
+    import the wavefunction-centers form FPLO's +hamdata
+    """
     function FPLO_get_WF_centers(file,n_WFs)
         R = zeros(3,n_WFs)
         while !eof(file)
