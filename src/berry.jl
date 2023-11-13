@@ -360,7 +360,10 @@ module Berry
     """
     function search_weyl_points(H::TB_Hamiltonian,idx_band,klist::Vector{T};atol=1E-4) where {T}
         d = H.local_dim
-        wps = Vector{T}()
+        wps = Vector{Vector{T}}(undef,nthreads())
+        for i = 1:nthreads()
+            wps[i] = Vector{T}()
+        end
         Hk = zeros(ComplexF64,d,d)
         for k0 in klist
             for χ in (-1,1)
@@ -368,11 +371,17 @@ module Berry
                 bloch_hamiltonian!(H,wp,Hk)
                 E = LAPACK.syev!('N','U',Hk)
                 if  ((idx_band > 1) && (E[idx_band]-E[idx_band-1] < atol)) || ((idx_band < d) && (E[idx_band+1]-E[idx_band] < atol))
-                    push!(wps,wp)
+                    push!(wps[threadid()],wp)
                 end
             end
         end
-        return wps
+        wps_out = Vector{T}()
+        for i = 1:nthreads()
+            for w in wps[i]
+                push!(wps_out,w)
+            end
+        end
+        return wps_out
     end
 
     """

@@ -29,7 +29,7 @@ module Bandstructure
                 idx = (i-2)*n_pts + j + 1
                 bloch_hamiltonian!(H,k0 + j*Δk/n_pts,Hk)
                 bands[idx,:] .=  LAPACK.syev!('N','U',Hk)
-                x[idx] = idx + 1
+                x[idx] = idx #+ 1 # there should not be a plus 1
             end
         end
         return bands, lines, x
