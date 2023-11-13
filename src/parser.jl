@@ -1,5 +1,5 @@
 module Parser
-    export FPLO_import_TB, Wannier90_import_TB
+    export FPLO_import_TB, Wannier90_import_TB, FPLO_import_space_group
     using ..TightBindingToolBox
     using LinearAlgebra, CSV, DataFrames
     
@@ -86,6 +86,33 @@ module Parser
             line = readline(file)
         end
         return ρ
+    end
+
+    function FPLO_import_space_group(filename)
+        file = open(filename)
+        U = FPLO_get_lattice_vectors(file)
+        G = Set{SymOperation}()
+        labels = Vector{String}()
+        while !eof(file)
+            line = readline(file)
+            if occursin("operation:",line)
+                push!(labels,split(readline(file))[2]) # name
+                line = readline(file) # alpha
+                g = Matrix{Float64}(undef,3,3)
+                g[1,:] = parse.(Float64,split(readline(file)))
+                g[2,:] = parse.(Float64,split(readline(file)))
+                g[3,:] = parse.(Float64,split(readline(file)))
+                h = inv(U)*g*U
+                if norm(h-round.(Int64,h)) > 1E-6
+                    @error "FPLO_import_space_group: rotation contains non-integer entries"
+                else
+                    line = readline(file) # tau
+                    t = parse.(Float64,split(readline(file)))
+                    push!(G,SymOperation(h,rationalize.(t)))
+                end
+            end
+        end
+        return G, labels
     end
     
     function skip_to_line_containing!(text,file)
