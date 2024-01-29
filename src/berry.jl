@@ -365,7 +365,7 @@ module Berry
             wps[i] = Vector{T}()
         end
         Hk = zeros(ComplexF64,d,d)
-        @threads for k0 in klist
+        for k0 in klist
             for χ in (-1,1)
                 wp = evolve_to_weyl_point(H,idx_band,k0,χ)
                 bloch_hamiltonian!(H,wp,Hk)

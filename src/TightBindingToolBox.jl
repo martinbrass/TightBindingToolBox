@@ -17,7 +17,7 @@ module TightBindingToolBox
 
     include("parser.jl")
     using .Parser
-    export FPLO_import_TB, Wannier90_import_TB, FPLO_import_space_group
+    export FPLO_import_TB, Wannier90_import_TB, FPLO_import_space_group, FPLO_get_symop
 
     include("berry.jl")
     using .Berry

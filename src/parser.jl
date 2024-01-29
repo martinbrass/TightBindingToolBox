@@ -1,5 +1,5 @@
 module Parser
-    export FPLO_import_TB, Wannier90_import_TB, FPLO_import_space_group
+    export FPLO_import_TB, Wannier90_import_TB, FPLO_import_space_group, FPLO_get_symop
     using ..TightBindingToolBox
     using LinearAlgebra, CSV, DataFrames
     
@@ -67,6 +67,34 @@ module Parser
     """
     import symmetry operation from the FPLO file +hamdata
     """
+    function FPLO_get_symop(filename,opname::String,a)
+        file = open(filename)
+        R = TightBindingToolBox.Parser.FPLO_get_lattice_vectors(file)
+        n_WFs = TightBindingToolBox.Parser.FPLO_get_number_WFs(file)
+        ρ = zeros(ComplexF64,n_WFs,n_WFs)
+        TightBindingToolBox.Parser.skip_to_line_containing!(opname,file)
+        α = [0 0 0; 0 0 0; 0 0 0//1]
+        readline(file)
+        α[1,:] = rationalize.(parse.(Float64,split(readline(file))))
+        α[2,:] = rationalize.(parse.(Float64,split(readline(file))))
+        α[3,:] = rationalize.(parse.(Float64,split(readline(file))))
+        readline(file)
+        τ = rationalize.(parse.(Float64,split(readline(file)))/a, tol=1E-6)
+        line = TightBindingToolBox.Parser.skip_to_line_containing!("iwan eqMO:",file)
+        while !eof(file) && !occursin("operation:",line) && !occursin("spin:",line)
+            idxs = parse.(Int64,split(readline(file)))
+            i = idxs[1]
+            readline(file)
+            coef = parse.(Float64,split(readline(file)))
+            for k = 2:length(idxs)
+                j = idxs[k]
+                ρ[j,i] = coef[2(k-1)-1] + im * coef[2(k-1)]
+            end
+            line = readline(file)
+        end
+        return α, τ, ρ
+    end
+
     function FPLO_import_symop(filename,opname::String)
         file = open(filename)
         R = FPLO_get_lattice_vectors(file)
@@ -92,11 +120,11 @@ module Parser
         file = open(filename)
         U = FPLO_get_lattice_vectors(file)
         G = Set{SymOperation}()
-        labels = Vector{String}()
+        labels = Dict{SymOperation,String}()
         while !eof(file)
             line = readline(file)
             if occursin("operation:",line)
-                push!(labels,split(readline(file))[2]) # name
+                label = split(readline(file))[2] # name
                 line = readline(file) # alpha
                 g = Matrix{Float64}(undef,3,3)
                 g[1,:] = parse.(Float64,split(readline(file)))
@@ -108,7 +136,9 @@ module Parser
                 else
                     line = readline(file) # tau
                     t = parse.(Float64,split(readline(file)))
-                    push!(G,SymOperation(h,rationalize.(t)))
+                    s = SymOperation(h,rationalize.(t))
+                    labels[s] = label
+                    push!(G,s)
                 end
             end
         end

@@ -35,6 +35,18 @@ module Bandstructure
         return bands, lines, x
     end
 
+    function bandstructure(H::TB_Hamiltonian{F,L},path)  where {F,L}
+        n = H.local_dim
+        l = length(path)
+        bands = zeros(l,n)
+        Hk = zeros(F,n,n)
+        for (idx,k) in pairs(path)
+            bloch_hamiltonian!(H,k,Hk)
+            bands[idx,:] .=  LAPACK.syev!('N','U',Hk)
+        end
+        return bands
+    end
+
     """
     plot_Bandstructure plots the energy dispersion along path
     path is a list of k-vectors (in units of the reciprocal basis)
