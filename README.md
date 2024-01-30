@@ -3,10 +3,14 @@ This module is written to calculate topological properties of tight binding mode
 
 Installation
 ------------
-* To install the package for usage:
-  julia -e 'import Pkg; Pkg.add(url="path/to/repo")'
-* To install the packe for development clone the repository and:
-  julia -e 'import Pkg; Pkg.develop(url="path/to/repo")'
+* To install the package for usage run:
+  
+    julia -e 'import Pkg; Pkg.add(url="path/to/repo")'
+  
+* To install the packe for development clone the repository and run:
+  
+    julia -e 'import Pkg; Pkg.develop(url="path/to/repo")'
+  
 
 
 [![Build Status](https://github.com/martinbrass/TightBindingToolBox.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/martinbrass/TightBindingToolBox.jl/actions/workflows/CI.yml?query=branch%3Amain)
