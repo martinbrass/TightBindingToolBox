@@ -398,7 +398,7 @@ module Berry
         r = range(-1/2,1/2,N)
         for (i,x) in pairs(r), (j,y) in pairs(r)
             k = k0 + x*k1 + y*k2
-            get_Hk_∂Hk!(H,k,Hk,∂Hk)
+            #get_Hk_∂Hk!(H,k,Hk,∂Hk) #TODO: check that this really is redundant
             get_berry_curvature!(H,k,idx_band,Hk,∂Hk,@view Ω[:,:,i,j])
         end
         h = 1/N
