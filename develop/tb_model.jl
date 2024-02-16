@@ -122,7 +122,7 @@ operator_basis(N) = vcat(
     end for j = 1:N for k = j+1:N
     ]
 )
-
+##
 basis = operator_basis(2)
 
 V=get_basis_for_irrep(χ[:,3],ρ,D4)
@@ -222,3 +222,110 @@ end
 path = [[0,0,0],[1/2,0,0],[1/2,1/2,0],[1/2,1/2,1/2],[0,0,0]]
 labels = ["Γ","X","M","R","Γ"]
 plot_Bandstructure(H,path,100,labels;c=:darkred)
+
+##
+function add_terms!(H,G,χ,R, param)
+    Cls = conjugacy_classes(G)
+    d = χ[TightBindingToolBox.Symmetry.get_index(neutral_element(G),Cls)]
+    basis = operator_basis(d)
+    ρH = operator_rep(basis,ρ)
+    Rs = orbit(G,R)
+    ρR = orbit_rep(G,R)
+    vH=get_basis_for_irrep(χ,ρH,G)
+    vR=get_basis_for_irrep(χ,ρR,G)
+
+    ρRH = Dict([
+        g => kron(vR'*ρR[g]*vR,vH'*ρH[g]*vH)
+        for g in G
+    ])
+    A1g = ones(length(Cls))
+    V=get_basis_for_irrep(A1g,ρRH,G)
+    #d = size(vH)[2]
+
+    for i = 1:d, j = 1:d
+        n = d*(i-1) + j
+        for (a,R) in pairs(Rs)
+            for (b,τ) in pairs(basis)
+                h = param * vR[a,i] * vH[b,j] * V[n,1] * τ
+                #display(h)
+                add_hoppings!(H,R,h)
+            end
+        end
+    end
+end
+##
+struct TB_model{F,T}
+    G::Set{T}
+    ρ::Dict{T, Matrix{F}}
+    ρH::Dict{T, Matrix{F}}
+    χ::Matrix{F}
+    op_basis::Vector{Matrix{ComplexF64}}
+    H::TB_Hamiltonian{ComplexF64,Int}
+end
+
+function TB_model(G::Set{T},ρ::Dict{T, Matrix{F}}) where {T,F}
+    χ = irreps(G)
+    n = size(first(ρ)[1])[1] # lattice dim
+    d = size(first(ρ)[2])[1] # local orbitals dim
+    op_basis = operator_basis(d)
+    ρH = operator_rep(basis,ρ)
+    H = TB_Hamiltonian{ComplexF64,Int}(d,n)
+    #Cls = conjugacy_classes(G)
+    #ω = Diagonal([length(C) for C in Cls]) / length(G)
+    #χH = characters(ρH,Cls)
+
+    return TB_model{F,T}(G,ρ,ρH,χ,op_basis)
+end
+
+function init_terms(M::TB_model,R)
+    G = M.G
+    Rs = orbit(G,R)
+    ρR = orbit_rep(G,R)
+    Cls = conjugacy_classes(G)
+    ω = Diagonal([length(C) for C in Cls]) / length(G)
+    #χH = characters(M.ρH,Cls)
+    #χR = characters(ρR,Cls)
+    #dH = round(Int,real(((M.χ'*ω*χH ))))
+    #dR = round(Int,real(((M.χ'*ω*χR ))))
+
+    ρRH = Dict([
+        g => kron(ρR[g],M.ρH[g])
+        for g in Oh
+    ])
+    A1g = ones(Int,length(Cls))
+    χRH = characters(ρRH,Cls)
+    n_param = round(Int,real(((A1g ⋅ (ω*χRH) ))))
+    @info "The TB_model needs $n_param parameters for the given hoppings."
+    V=get_basis_for_irrep(A1g,ρRH,G)
+
+    return V, Rs
+end
+
+function add_terms!(M::TB_model,V,Rs,param)
+    H = M.H
+    d = length(Rs)
+
+    for (a,R) in pairs(Rs)
+        for (b,τ) in pairs(M.op_basis)
+            n = d*(a-1) + b
+            for (i,t) in pairs(param)
+                h = t * V[n,i] * τ
+                add_hoppings!(H,R,h) # TODO: unroll loop
+            end
+        end
+    end
+
+end
+
+##
+
+Oh =generate_group([
+    Matrix(Diagonal([-1//1,-1,1])),
+    Matrix(Diagonal([-1//1,1,-1])),
+    Matrix(Diagonal([-1//1,-1,-1])),
+    [0 0 1//1; 1 0 0; 0 1 0],
+    [0 1//1 0; 1 0 0; 0 0 -1]
+])
+
+χ = irreps(Oh)
+ρT = Dict([g=> g for g in Oh])
