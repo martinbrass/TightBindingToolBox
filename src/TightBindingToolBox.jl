@@ -32,4 +32,8 @@ module TightBindingToolBox
     export conjugate, coset, quotient, conjugacy_classes, generate_group, irreps,
         SymOperation, translations, SpinSym, orbit, stabilizer, isgroup, characters,
         representation, plot_wignerseitz, projection
+
+    include("tb_model.jl")
+    using .Model
+    export TB_model, init_terms, add_terms!
 end

@@ -115,6 +115,8 @@ end
 
 ##
 
+using TightBindingToolBox, LinearAlgebra, Plots, LaTeXStrings
+
 Oh =generate_group([
     Matrix(Diagonal([-1//1,-1,1])),
     Matrix(Diagonal([-1//1,1,-1])),
@@ -138,7 +140,8 @@ plot_Bandstructure(M.H,path,100,labels;c=:darkred)
 
 V, Rs = init_terms(M,[1,1,0]);
 
-add_terms!(M,V,Rs,[0.2,0.1,-0.1]*5.1);
+#add_terms!(M,V,Rs,[0.2,0.1,-0.1]*5.1);
+add_terms!(M,V,Rs,[0.2,0.1,-0.1]*7);
 
 plot_Bandstructure(M.H,path,1000,labels;c=:darkred)
 ##
