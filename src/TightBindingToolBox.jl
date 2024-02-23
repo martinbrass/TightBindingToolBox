@@ -31,7 +31,7 @@ module TightBindingToolBox
     using .Symmetry
     export conjugate, coset, quotient, conjugacy_classes, generate_group, irreps,
         SymOperation, translations, SpinSym, orbit, stabilizer, isgroup, characters,
-        representation, plot_wignerseitz, projection
+        representation, plot_wignerseitz, projection, class_labels
 
     include("tb_model.jl")
     using .Model
