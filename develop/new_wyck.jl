@@ -23,7 +23,7 @@ function transform(ht::hopping_term,g,r1,r2,wycks)
     t = r1 * ht.t * r2'
     w1, R1 = fold_wyck_to_unit_cell(g*ht.w1,wycks)
     w2, R2 = fold_wyck_to_unit_cell(g*ht.w2,wycks)
-    return hopping_term(t,w1,w2,g*ht.R2 + R2 - R1)
+    return hopping_term(t,w1,w2,round.(Int64,g*ht.R2 + R2 - R1))
 end
 
 wyck_idx(w,wycks) = findfirst(x->x==w,wycks)
