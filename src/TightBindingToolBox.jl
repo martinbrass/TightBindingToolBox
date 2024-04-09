@@ -35,5 +35,5 @@ module TightBindingToolBox
 
     include("tb_model.jl")
     using .Model
-    export TB_model, init_terms, add_terms!
+    export TB_model, init_terms, add_terms!, add_hopping!, Lattice_Model
 end
