@@ -5,4 +5,5 @@ using Test
     include("core.jl")
     include("berry.jl")
     include("model.jl")
+    #include("TightBindingHamiltonian.jl")
 end

@@ -36,4 +36,7 @@ module TightBindingToolBox
     include("tb_model.jl")
     using .Model
     export TB_model, init_terms, add_terms!, add_hopping!, Lattice_Model
+
+    #include("TightBindingHamiltonian.jl")
+    #export TightBindingHamiltonian, number_of_bands
 end

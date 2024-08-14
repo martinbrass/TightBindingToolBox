@@ -107,3 +107,19 @@ function plot_wignerseitz(P;kwargs...)
     end
     return plt
 end
+
+function plot_wignerseitz!(plt,P;kwargs...)
+    Q,part = wignerseitz(P)
+    X = [p[1] for p in Q]
+    Y = [p[2] for p in Q]
+    Z = [p[3] for p in Q]
+
+    #plt=scatter(X,Y,Z,legend=false;kwargs...)
+    (q,p) = part[1]
+    plot!(plt,[p[1],q[1]],[p[2],q[2]],[p[3],q[3]],legend=false,c=:black;kwargs...)
+
+    for (p,q) in part
+        plot!(plt,[p[1],q[1]],[p[2],q[2]],[p[3],q[3]],legend=false,c=:black;kwargs...)
+    end
+    return plt
+end
