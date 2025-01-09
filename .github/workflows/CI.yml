@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - master
     tags: ['*']
   pull_request:
 concurrency:
@@ -18,9 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.0'
           - '1.9'
-          - 'nightly'
         os:
           - ubuntu-latest
         arch:
