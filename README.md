@@ -12,11 +12,15 @@ Installation
 ------------
 * To install the package for usage run:
   
-    julia -e 'import Pkg; Pkg.add(url="path/to/repo")'
+  ```sh
+  julia -e 'import Pkg; Pkg.add(url="path/to/repo")'
+  ```
   
-* To install the packe for development clone the repository and run:
+* To install the package for development clone the repository and run:
   
-    julia -e 'import Pkg; Pkg.develop(url="path/to/repo")'
+  ```sh
+  julia -e 'import Pkg; Pkg.develop(url="path/to/repo")'
+  ```
   
 
 
