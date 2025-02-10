@@ -6,7 +6,8 @@ module Symmetry
     include("euclidean_symmetry.jl")
     export SymOperation, translations, SpinSym, representation
 
-    include("wignerseitz.jl")
+    # implement in "../../ext/PlotsExt.jl"
+    function plot_wignerseitz end
     export plot_wignerseitz
     
 end
