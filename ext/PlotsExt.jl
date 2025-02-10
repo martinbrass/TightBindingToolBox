@@ -1,4 +1,6 @@
-using Plots, LinearAlgebra
+module PlotsExt
+
+using LinearAlgebra, Plots, TightBindingToolBox.Symmetry
 
 struct Plane{F} 
     normal::Vector{F}
@@ -92,7 +94,7 @@ function wignerseitz(P)
     return Q, partners
 end
 
-function plot_wignerseitz(P;kwargs...)
+function Symmetry.plot_wignerseitz(P;kwargs...)
     Q,part = wignerseitz(P)
     X = [p[1] for p in Q]
     Y = [p[2] for p in Q]
@@ -122,4 +124,6 @@ function plot_wignerseitz!(plt,P;kwargs...)
         plot!(plt,[p[1],q[1]],[p[2],q[2]],[p[3],q[3]],legend=false,c=:black;kwargs...)
     end
     return plt
+end
+
 end
