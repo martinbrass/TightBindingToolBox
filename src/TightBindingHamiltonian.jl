@@ -1,7 +1,15 @@
 using LinearAlgebra
 
+"""
+    TightBindingHamiltonian{F,I}
+
+Represent a tight binding Hamiltonian as a dictionary.
+
+For each real space coordinate of type `Vector{F}`,
+hopping parameters are stored as `Matrix{I}`.
+"""
 struct TightBindingHamiltonian{F <: Number, I <: Number}
-    terms::Dict{Array{I,1},Array{F,2}}
+    terms::Dict{Vector{I},Matrix{F}}
     Hk::Matrix{ComplexF64}
 end
 
@@ -34,6 +42,15 @@ function (H::TightBindingHamiltonian)(k)
     return Hk
 end
 
+"""
+    bloch_hamiltonian!(H::TightBindingHamiltonian,k)
+
+Evaluate `H` at a momentum `k` and store it in `H.Hk`.
+
+```math
+H_k = ∑_R e^{2π\\mathrm{i}kR} H_R
+```
+"""
 function bloch_hamiltonian!(H::TightBindingHamiltonian,k) 
     fill!(H.Hk,zero(ComplexF64))
     for (R,t) in pairs(H.terms)

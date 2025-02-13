@@ -29,10 +29,17 @@ end
 
 gauss(x,σ) = exp( -(x/σ)^2 /2 ) /sqrt(2π) /σ
 
+"""
+    spectral_function(H::TightBindingHamiltonian,W,nk,σ)
+
+Calculate the spectral function for a frequency grid `W` with
+`nk` momenta in each each dimension and
+gaussian broadening `σ`.
+"""
 function spectral_function(H::TightBindingHamiltonian,W,nk,σ)
     rk = range(0,1-1/nk,nk)
     A = [zero(H.Hk) for i = 1:length(W)]
-    N = nk*nk*nk #TODO: check correct norm
+    N = nk*nk*nk
     for x in rk, y in rk, z in rk
         k = [x,y,z]
         bloch_hamiltonian!(H,k)

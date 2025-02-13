@@ -213,7 +213,7 @@ function FPLO_get_hoppings!(file,n_WFs,basis_trafo,centers,H)
                 R_cartesian = basis_trafo * (a - centers[:,j] + centers[:,i])
                 R_lattice = round.(Int64,R_cartesian)
                 if norm(R_cartesian-R_lattice) > 0.01
-                    thorw(error("Error: in FPLO_get_hoppings! lattice conversion failed\n"))
+                    throw(error("Error: in FPLO_get_hoppings! lattice conversion failed\n"))
                 end
                 H[R_lattice] += h0
                 H[R_lattice][i,j] = parse(Float64,s[4]) + im*parse(Float64,s[5])
